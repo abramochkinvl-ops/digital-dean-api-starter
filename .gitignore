@@ -10,3 +10,8 @@ htmlcov/
 .env
 *.pem
 *.key
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.env.*

@@ -1,8 +1,7 @@
 {
   "info": {
-    "_postman_id": "dc000001-0000-4000-8000-000000000001",
-    "name": "Digital Dean — Practice 01",
-    "description": "Послідовна перевірка базового API системи «Цифровий деканат». Перед повторним повним запуском перезапустіть сервер або змініть email у запиті створення.",
+    "name": "Цифровий деканат — ПР1 — варіант 1",
+    "description": "24 послідовні перевірки. Перед запуском змінити year_min/year_max згідно з app/institution.json. Дані синтетичні, email унікальні для кожного запуску.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -11,17 +10,43 @@
       "value": "http://127.0.0.1:8000"
     },
     {
-      "key": "student_id",
-      "value": ""
+      "key": "enrollment_year",
+      "value": "2026"
+    },
+    {
+      "key": "year_min",
+      "value": "2000"
+    },
+    {
+      "key": "year_max",
+      "value": "2030"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.info.requestName.startsWith(\"01\")) {",
+          "const run=Date.now().toString()+Math.random().toString(16).slice(2,8);",
+          "pm.collectionVariables.set(\"run_id\",run);",
+          "pm.collectionVariables.set(\"student_email\",\"student.\"+run+\"@example.com\");",
+          "pm.collectionVariables.set(\"duplicate_email\",(\"student.\"+run+\"@example.com\").toUpperCase());",
+          "pm.collectionVariables.set(\"year_below\",Number(pm.collectionVariables.get(\"year_min\"))-1);",
+          "pm.collectionVariables.set(\"year_above\",Number(pm.collectionVariables.get(\"year_max\"))+1);",
+          "}"
+        ]
+      }
     }
   ],
   "item": [
     {
-      "name": "01 Health",
+      "name": "01 Готовність",
       "request": {
         "method": "GET",
-        "header": [],
-        "url": "{{base_url}}/health"
+        "url": "{{base_url}}/health",
+        "header": []
       },
       "event": [
         {
@@ -29,17 +54,18 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 200', () => pm.response.to.have.status(200));",
-              "pm.test('service is ready', () => pm.expect(pm.response.json()).to.eql({status: 'ok'}));"
+              "pm.test(\"Код 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Точне тіло\", () => pm.expect(pm.response.json()).to.eql({status:\"ok\"}));"
             ]
           }
         }
       ]
     },
     {
-      "name": "02 Create student",
+      "name": "02 Створення",
       "request": {
         "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
         "header": [
           {
             "key": "Content-Type",
@@ -48,14 +74,13 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"olena.koval@example.com\",\n  \"group_code\": \"КН-31\",\n  \"study_program\": \"Комп'ютерні науки\"\n}",
+          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"{{student_email}}\",\n  \"group_code\": \"КН-31\",\n  \"enrollment_year\": {{enrollment_year}}\n}",
           "options": {
             "raw": {
               "language": "json"
             }
           }
-        },
-        "url": "{{base_url}}/api/v1/students"
+        }
       },
       "event": [
         {
@@ -63,20 +88,22 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 201', () => pm.response.to.have.status(201));",
-              "pm.test('response has id', () => pm.expect(pm.response.json().id).to.be.a('string'));",
-              "if (pm.response.code === 201) { pm.collectionVariables.set('student_id', pm.response.json().id); }"
+              "pm.test(\"Код 201\", () => pm.response.to.have.status(201));",
+              "const b=pm.response.json();",
+              "pm.test(\"UUID та дані\", () => {pm.expect(b.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);pm.expect(b.enrollment_year).to.eql(Number(pm.collectionVariables.get(\"enrollment_year\")));pm.expect(b.group_code).to.eql(\"КН-31\");});",
+              "pm.collectionVariables.set(\"student_id\",b.id);",
+              "pm.collectionVariables.set(\"student_body\",JSON.stringify(b));"
             ]
           }
         }
       ]
     },
     {
-      "name": "03 List students",
+      "name": "03 Список",
       "request": {
         "method": "GET",
-        "header": [],
-        "url": "{{base_url}}/api/v1/students"
+        "url": "{{base_url}}/api/v1/students",
+        "header": []
       },
       "event": [
         {
@@ -84,19 +111,19 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 200', () => pm.response.to.have.status(200));",
-              "pm.test('body is an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+              "pm.test(\"Код 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Список містить запис\",()=>{const b=pm.response.json();pm.expect(b).to.be.an(\"array\");pm.expect(b.some(x=>x.id===pm.collectionVariables.get(\"student_id\"))).to.eql(true);});"
             ]
           }
         }
       ]
     },
     {
-      "name": "04 Get created student",
+      "name": "04 Запис за UUID",
       "request": {
         "method": "GET",
-        "header": [],
-        "url": "{{base_url}}/api/v1/students/{{student_id}}"
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
+        "header": []
       },
       "event": [
         {
@@ -104,19 +131,19 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 200', () => pm.response.to.have.status(200));",
-              "pm.test('id matches', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('student_id')));"
+              "pm.test(\"Код 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Точне представлення\",()=>pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get(\"student_body\"))));"
             ]
           }
         }
       ]
     },
     {
-      "name": "05 Get missing student",
+      "name": "05 Відсутній UUID",
       "request": {
         "method": "GET",
-        "header": [],
-        "url": "{{base_url}}/api/v1/students/00000000-0000-4000-8000-000000000000"
+        "url": "{{base_url}}/api/v1/students/00000000-0000-0000-0000-000000000000",
+        "header": []
       },
       "event": [
         {
@@ -124,16 +151,18 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 404', () => pm.response.to.have.status(404));"
+              "pm.test(\"Код 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Контрольована помилка\",()=>pm.expect(pm.response.json()).to.eql({detail:\"Студента не знайдено.\"}));"
             ]
           }
         }
       ]
     },
     {
-      "name": "06 Patch group code",
+      "name": "06 Часткове оновлення",
       "request": {
         "method": "PATCH",
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
         "header": [
           {
             "key": "Content-Type",
@@ -148,8 +177,7 @@
               "language": "json"
             }
           }
-        },
-        "url": "{{base_url}}/api/v1/students/{{student_id}}"
+        }
       },
       "event": [
         {
@@ -157,17 +185,20 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 200', () => pm.response.to.have.status(200));",
-              "pm.test('group changed', () => pm.expect(pm.response.json().group_code).to.eql('КН-32'));"
+              "pm.test(\"Код 200\", () => pm.response.to.have.status(200));",
+              "const expected=JSON.parse(pm.collectionVariables.get(\"student_body\"));expected.group_code=\"КН-32\";",
+              "pm.test(\"Змінено лише group_code\",()=>pm.expect(pm.response.json()).to.eql(expected));",
+              "pm.collectionVariables.set(\"student_body\",JSON.stringify(expected));"
             ]
           }
         }
       ]
     },
     {
-      "name": "07 Reject malformed JSON",
+      "name": "07 Пошкоджений JSON",
       "request": {
         "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
         "header": [
           {
             "key": "Content-Type",
@@ -176,14 +207,13 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"full_name\": \"Незавершений документ\"",
+          "raw": "{\"full_name\":",
           "options": {
             "raw": {
-              "language": "text"
+              "language": "json"
             }
           }
-        },
-        "url": "{{base_url}}/api/v1/students"
+        }
       },
       "event": [
         {
@@ -191,16 +221,18 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 422', () => pm.response.to.have.status(422));"
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));",
+              "pm.test(\"Помилка JSON\",()=>pm.expect(pm.response.json().detail[0].type).to.eql(\"json_invalid\"));"
             ]
           }
         }
       ]
     },
     {
-      "name": "08 Reject unknown field",
+      "name": "08 Невідоме поле PATCH",
       "request": {
         "method": "PATCH",
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
         "header": [
           {
             "key": "Content-Type",
@@ -215,8 +247,7 @@
               "language": "json"
             }
           }
-        },
-        "url": "{{base_url}}/api/v1/students/{{student_id}}"
+        }
       },
       "event": [
         {
@@ -224,34 +255,19 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 422', () => pm.response.to.have.status(422));"
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));",
+              "pm.test(\"extra_forbidden\",()=>pm.expect(pm.response.json().detail.some(x=>x.type===\"extra_forbidden\")).to.eql(true));"
             ]
           }
         }
       ]
     },
     {
-      "name": "09 Filter by study program",
+      "name": "09 Фільтр року вступу",
       "request": {
         "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/api/v1/students?study_program=Комп'ютерні%20науки",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "students"
-          ],
-          "query": [
-            {
-              "key": "study_program",
-              "value": "Комп'ютерні науки"
-            }
-          ]
-        }
+        "url": "{{base_url}}/api/v1/students?enrollment_year={{enrollment_year}}",
+        "header": []
       },
       "event": [
         {
@@ -259,17 +275,18 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 200', () => pm.response.to.have.status(200));",
-              "pm.test('all records match filter', () => { const rows = pm.response.json(); pm.expect(rows.every(x => x.study_program === \"Комп'ютерні науки\")).to.be.true; });"
+              "pm.test(\"Код 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Точний рік кожного запису\",()=>{const b=pm.response.json();pm.expect(b.some(x=>x.id===pm.collectionVariables.get(\"student_id\"))).to.eql(true);b.forEach(x=>pm.expect(x.enrollment_year).to.eql(Number(pm.collectionVariables.get(\"enrollment_year\"))));});"
             ]
           }
         }
       ]
     },
     {
-      "name": "10 Reject duplicate email",
+      "name": "10 Повторна email без урахування регістру",
       "request": {
         "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
         "header": [
           {
             "key": "Content-Type",
@@ -278,14 +295,13 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"full_name\": \"Інший Студент\",\n  \"email\": \"olena.koval@example.com\",\n  \"group_code\": \"КН-22\",\n  \"study_program\": \"Комп'ютерні науки\"\n}",
+          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"{{duplicate_email}}\",\n  \"group_code\": \"КН-31\",\n  \"enrollment_year\": {{enrollment_year}}\n}",
           "options": {
             "raw": {
               "language": "json"
             }
           }
-        },
-        "url": "{{base_url}}/api/v1/students"
+        }
       },
       "event": [
         {
@@ -293,7 +309,419 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('status is 409', () => pm.response.to.have.status(409));"
+              "pm.test(\"Код 409\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Контрольований конфлікт\",()=>pm.expect(pm.response.json()).to.eql({detail:\"Електронна адреса вже використовується.\"}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Порожній PATCH",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Спроба змінити id",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"00000000-0000-0000-0000-000000000000\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Явний null",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Нижня межа року",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"min.{{run_id}}@example.com\",\n  \"group_code\": \"КН-31\",\n  \"enrollment_year\": {{year_min}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Нижню межу прийнято\",()=>pm.expect(pm.response.json().enrollment_year).to.eql(Number(pm.collectionVariables.get(\"year_min\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Верхня межа року",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"max.{{run_id}}@example.com\",\n  \"group_code\": \"КН-31\",\n  \"enrollment_year\": {{year_max}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Верхню межу прийнято\",()=>pm.expect(pm.response.json().enrollment_year).to.eql(Number(pm.collectionVariables.get(\"year_max\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Рік нижче мінімуму",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"below.{{run_id}}@example.com\",\n  \"group_code\": \"КН-31\",\n  \"enrollment_year\": {{year_below}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Рік вище максимуму PATCH",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"enrollment_year\": {{year_above}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Стан після невдалих змін",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/students/{{student_id}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Дані не пошкоджено\",()=>pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get(\"student_body\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Неприйнятний фільтр",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/students?enrollment_year={{year_above}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Другий запис",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"second.{{run_id}}@example.com\",\n  \"group_code\": \"КН-31\",\n  \"enrollment_year\": {{enrollment_year}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 201\", () => pm.response.to.have.status(201));",
+              "const b=pm.response.json();pm.collectionVariables.set(\"second_id\",b.id);pm.collectionVariables.set(\"second_body\",JSON.stringify(b));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Конфлікт email у PATCH",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/api/v1/students/{{second_id}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{duplicate_email}}\",\n  \"group_code\": \"КН-32\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Атомарність конфліктного PATCH",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/students/{{second_id}}",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Другий запис незмінний\",()=>pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get(\"second_body\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 Неправильний UUID",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/students/not-a-uuid",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 Неправильна email",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/students",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"full_name\": \"Олена Коваль\",\n  \"email\": \"not-an-email\",\n  \"group_code\": \"КН-31\",\n  \"enrollment_year\": {{enrollment_year}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Код 422\", () => pm.response.to.have.status(422));"
             ]
           }
         }

@@ -2,6 +2,7 @@ from typing import Annotated, Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from app.config import settings
 
@@ -42,10 +43,17 @@ class StudentRead(StudentCreate):
 class StudentUpdate(StrictModel):
     """Поля можна пропускати, але явно переданий null не приймається."""
 
-    full_name: FullName | None = None
-    email: EmailStr | None = None
-    group_code: GroupCode | None = None
-    enrollment_year: EnrollmentYear | None = None
+    @staticmethod
+    def _schema_without_null_defaults(schema: dict) -> None:
+        for field in schema.get("properties", {}).values():
+            field.pop("default", None)
+
+    model_config = ConfigDict(json_schema_extra=_schema_without_null_defaults)
+
+    full_name: FullName | SkipJsonSchema[None] = None
+    email: EmailStr | SkipJsonSchema[None] = None
+    group_code: GroupCode | SkipJsonSchema[None] = None
+    enrollment_year: EnrollmentYear | SkipJsonSchema[None] = None
 
     @model_validator(mode="after")
     def validate_patch(self) -> Self:

@@ -16,7 +16,7 @@ PROFILES = tuple(KEY_BYTES.items())
 
 @pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("algorithm,key_size", PROFILES)
-@pytest.mark.parametrize("message", (b"", b"demo", "Навчальна примітка  ".encode()))
+@pytest.mark.parametrize("message", (b"", b"demo", "Навчальна примітка  ".encode(), bytes(range(256)) * 256))
 def test_round_trip(backend, algorithm, key_size, message):
     # Новий незалежний ключ на тест; лише одне шифрування з nonce=0.
     key, nonce, aad = token_bytes(key_size), bytes(12), b"synthetic-context"
@@ -87,5 +87,33 @@ def test_process_key_has_no_secret_in_repr():
     assert "nonces=" not in repr(value)
 
 
-# TODO: доповніть великими повідомленнями, усіченим тегом, невідомою бібліотекою.
-# TODO: перевірте конфігурацію лічильника і відсутність повторів між записами.
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("algorithm,key_size", PROFILES)
+def test_truncated_tag(backend, algorithm, key_size):
+    key, nonce = token_bytes(key_size), bytes(12)
+    ct, tag = seal_bytes(backend, algorithm, key, nonce, b"demo", b"context")
+    with pytest.raises(CiphertextError):
+        open_bytes(backend, algorithm, key, nonce, ct, tag[:-1], b"context")
+
+
+def test_unknown_backend_is_rejected():
+    key, nonce = token_bytes(32), bytes(12)
+    with pytest.raises(ValueError, match="Unsupported backend"):
+        seal_bytes("unknown", "AES-256-GCM", key, nonce, b"demo", b"")
+    with pytest.raises(ValueError, match="Unsupported backend"):
+        open_bytes("unknown", "AES-256-GCM", key, nonce, b"demo", bytes(16), b"")
+
+
+@pytest.mark.parametrize("limit", (0, -1, 1_000_001, True, 1.0))
+def test_invalid_counter_limit(limit):
+    with pytest.raises(ValueError):
+        NonceSequence(limit=limit)
+
+
+def test_sequential_counter_stops_without_wrapping():
+    sequence = NonceSequence(limit=2)
+    assert sequence.next() == bytes(12)
+    assert sequence.next() == (1).to_bytes(12, "big")
+    for _ in range(2):
+        with pytest.raises(RuntimeError):
+            sequence.next()

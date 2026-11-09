@@ -2,6 +2,8 @@
 
 from threading import Lock
 
+from app.security.profiles import NONCE_BYTES
+
 
 class NonceSequence:
     def __init__(self, limit: int = 1_000_000):
@@ -12,5 +14,10 @@ class NonceSequence:
         self._lock = Lock()
 
     def next(self) -> bytes:
-        """TODO: під Lock зарезервувати нові 12 байтів або підняти RuntimeError."""
-        raise NotImplementedError("Implement synchronized monotonic nonce counter")
+        """Зарезервувати одноразове значення для поточного ключа."""
+        with self._lock:
+            if self._value >= self._limit:
+                raise RuntimeError("Key usage limit reached")
+            nonce = self._value.to_bytes(NONCE_BYTES, "big")
+            self._value += 1
+            return nonce

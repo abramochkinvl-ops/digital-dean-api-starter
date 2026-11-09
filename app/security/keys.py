@@ -17,8 +17,3 @@ class ProcessKey:
 def create_process_key(limit: int = 1_000_000) -> ProcessKey:
     """Викликайте при запуску, а не при кожному запиті чи читанні примітки."""
     return ProcessKey(uuid4(), token_bytes(32), NonceSequence(limit))
-
-
-# TODO: збережіть один ProcessKey у стані застосунку/його залежностях.
-# TODO: маршрути запису й читання використовують цей самий матеріал ключа.
-# Не зберігайте ключ у репозиторії приміток, файлі, JSON чи Git.

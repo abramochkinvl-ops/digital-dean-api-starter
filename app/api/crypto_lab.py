@@ -1,20 +1,33 @@
-"""Маршрут тільки читає звіт; не запускає вимірювання через HTTP."""
+"""Маршрут читає звіт із серверної конфігурації."""
 
+import os
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import ValidationError
+
+from app.schemas.benchmark_report import BenchmarkReport
+
 
 router = APIRouter(prefix="/api/v1/lab/crypto", tags=["crypto-lab"])
-REPORT_PATH = Path(__file__).resolve().parents[2] / "results/practice-02/report.json"
+DEFAULT_REPORT = Path(__file__).resolve().parents[2] / "results/practice-02/report.json"
+REPORT_PATH = Path(os.environ.get("CRYPTO_BENCHMARK_REPORT", DEFAULT_REPORT))
+UNAVAILABLE = "Benchmark results unavailable"
 
 
-def load_benchmark_report(path: Path) -> dict:
-    """TODO: прочитати й перевірити report.json, не приймати шлях від клієнта."""
-    raise NotImplementedError("Implement validated benchmark report reader")
+def load_benchmark_report(path: Path) -> BenchmarkReport:
+    return BenchmarkReport.model_validate_json(path.read_bytes())
 
 
-# TODO: GET /benchmark-results, 200 із повним агрегованим звітом.
-# TODO: відсутній файл: 404; пошкоджений: 500 із безпечним detail.
-# TODO: detail="Benchmark results unavailable", без внутрішніх шляхів.
-# TODO: path беріть із конфігурації; тест підмінює конфігурацію, не HTTP-вхід.
-# TODO: підключіть router у своєму main.py після реалізації.
+@router.get(
+    "/benchmark-results", response_model=BenchmarkReport,
+    responses={404: {"description": UNAVAILABLE}, 500: {"description": UNAVAILABLE}},
+)
+def get_benchmark_results() -> BenchmarkReport:
+    """Повернути збережені результати повного базового експерименту."""
+    try:
+        return load_benchmark_report(REPORT_PATH)
+    except FileNotFoundError:
+        raise HTTPException(404, UNAVAILABLE) from None
+    except (OSError, ValidationError):
+        raise HTTPException(500, UNAVAILABLE) from None

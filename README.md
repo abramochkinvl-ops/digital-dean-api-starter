@@ -1,18 +1,17 @@
-# Цифровий деканат — практична робота 1, варіант 1
+# Цифровий деканат · практичні роботи 1 і 2
 
 Розв’язок продовжує історію форку `abramochkinvl-ops/digital-dean-api-starter`, базова фіксація `7dde819`.
-Номер у списку — 1; остача `1 % 4 = 1`; індивідуальне поле — `enrollment_year`.
+Номер у списку — 1. Варіант ПР №1 додає `enrollment_year`, а варіант ПР №2 додає захищену категорію примітки. [Звіт ПР №2](docs/practice-02-report.md).
 
 ## Швидкий запуск у Windows CMD або терміналі VS Code
 
 Відкрийте корінь проєкту, де розташований `pyproject.toml`:
 
 ```bat
-python -m venv .venv
-.venv\Scripts\activate.bat
-python -m pip install -e ".[dev]"
-python -m pytest
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+py -m venv .venv
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.venv\Scripts\python.exe -m pytest
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Потрібен Python 3.12+. Для зручності є `setup.cmd`, `verify.cmd` та `run.cmd`.
@@ -32,13 +31,13 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```bat
 set ENROLLMENT_YEAR_MIN=2010
 set ENROLLMENT_YEAR_MAX=2026
-python -m uvicorn app.main:app --reload
+python -m uvicorn app.main:app --host 127.0.0.1
 ```
 
 Після зміни конфігурації повністю перезапустіть процес. Якщо мінімум більший за максимум, запуск відхиляється.
 Схеми, query-фільтр і документація використовують одні межі. JSON-значення року має бути цілим числом: `true`, `2026.5` і рядок `"2026"` не приймаються в тілі. Query-параметр передається як текст URL і розбирається як ціле число.
 
-## Контракт
+## Контракт студентів із ПР №1
 
 | Метод | Шлях | Успіх | Передбачені помилки |
 |---|---|---|---|
@@ -72,7 +71,7 @@ PATCH приймає один або кілька дозволених полі�
 - `postman/digital-dean-practice-01.postman_collection.json` — 24 послідовні запити;
 - `openapi.json` — знімок контракту для навчальних меж 2000–2030.
 
-## Postman
+## Postman для ПР №1
 
 1. Запустіть API.
 2. Імпортуйте JSON із каталогу `postman`.
@@ -91,36 +90,43 @@ npx --yes newman run postman/digital-dean-practice-01.postman_collection.json
 
 ## Перевірки та межі реалізації
 
-`python -m pytest` запускає 51 тест, включно з параметризованими сценаріями. Кожен тест починається з незалежного репозиторію. Перевіряються всі HTTP-операції, нормалізація, помилки, атомарність конфлікту, межі, зміна конфігурації в новому процесі та паралельне створення однакової email.
+`python -m pytest` запускає 163 тести, з них 51 успадковано з ПР №1. Кожен тест починається з незалежного репозиторію. Перевіряються всі HTTP-операції, нормалізація, помилки, атомарність конфлікту, межі, зміна конфігурації в новому процесі та паралельне створення однакової email.
 
 `RLock` захищає операції в одному процесі; це не спільне сховище кількох workers. API не реалізує автентифікацію, авторизацію, TLS, постійне зберігання, аудит та обмеження частоти запитів. UUID не є дозволом доступу. `/health` не перевіряє зовнішню БД, бо її в цій роботі немає. DELETE за завданням відсутній.
 
-## Продовження вашої історії Git
+## ПР №2. Захищені примітки та вимірювання
 
-Це гілка `practice-01` того самого форку, а не новий непов’язаний проєкт. `origin` — ваш форк, `upstream` — шаблон викладача.
+1. Створіть вигаданого студента через `POST /api/v1/students`. Скопіюйте `id`.
+2. Надішліть `POST /api/v1/students/{student_id}/secure-notes` з тілом `{"text":"Навчальна примітка","category":"academic"}`. Відповідь 201 містить UUID примітки, UUID студента, алгоритм і категорію.
+3. Надішліть `GET /api/v1/students/{student_id}/secure-notes/{note_id}`. Відповідь 200 містить метадані й перевірений текст.
+4. `GET /api/v1/lab/crypto/benchmark-results` читає готовий [звіт вимірювань](results/practice-02/report.json).
 
-Перед публікацією перевірте чистий стан, результати та адреси:
-
-```bat
-git status
-git remote -v
-git branch --show-current
-git log --oneline --decorate -n 10
-python -m pytest
-git push -u origin HEAD:refs/heads/practice-01
-git push origin tag practice-01
-git ls-remote --heads --tags origin practice-01
-```
-
-Не використовуйте `--force` і не перезаписуйте свою локальну папку поверх незбережених змін.
-
-Якщо отримали архів з Git bundle, повну перевірену історію можна відкрити в окремій папці:
+Вимірювання запускайте з кореня Git-проєкту. Використовуйте окремий каталог, щоб порівняти свій повтор із зафіксованим запуском:
 
 ```bat
-git clone -b practice-01 digital-dean-practice-01.bundle digital-dean-api-ready
-cd digital-dean-api-ready
-git remote set-url origin https://github.com/abramochkinvl-ops/digital-dean-api-starter.git
-git remote add upstream https://github.com/serhii-ch-eu/digital-dean-api-starter.git
+.venv\Scripts\python.exe -m benchmarks.crypto_benchmark --output-dir results/local-practice-02
 ```
 
-Це ще один клон тієї самої історії. Наявний локальний проєкт лишається цілим. Після публікації з цього клону можна отримати гілку у попередньому клоні через `git fetch origin`; незакомічені зміни спочатку збережіть.
+Готуються `raw.csv`, `report.json` і два графіки. За замовчуванням API читає `results/practice-02/report.json`. Змінна середовища `CRYPTO_BENCHMARK_REPORT` дає змогу задати інший шлях до запуску сервера. Одна копія API працює одним процесом. Ключ та примітки зникають при його перезапуску.
+
+Імпортуйте `postman/digital-dean-practice-02.postman_collection.json` у Postman і запустіть усю колекцію по черзі проти `http://127.0.0.1:8000`. Для перевірки через CMD із Node.js:
+
+```bat
+npx --yes newman run postman/digital-dean-practice-02.postman_collection.json
+```
+
+Результати, методику, тести й історію комітів наведено у [звіті ПР №2](docs/practice-02-report.md).
+
+## Перевірка та публікація гілки
+
+```bat
+git status --short
+git merge-base --is-ancestor refs/tags/practice-01 HEAD
+git merge-base --is-ancestor upstream/practice-02-starter HEAD
+git log --no-merges --oneline refs/tags/practice-02-base..HEAD
+git push -u origin HEAD:refs/heads/practice-02
+git push origin refs/tags/practice-02-base refs/tags/practice-02
+git ls-remote --heads --tags origin "practice-02*"
+```
+
+Фінальний стан для чистої перевірки доступний за тегом `practice-02`. Після отримання тега виконайте `git switch --detach refs/tags/practice-02` у чистому клоні, потім встановіть залежності й запустіть тести командами з початку README.

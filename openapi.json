@@ -1,1 +1,910 @@
-{"openapi":"3.1.0","info":{"title":"Digital Dean API","description":"Навчальний API системи «Цифровий деканат»","version":"0.1.0"},"paths":{"/health":{"get":{"tags":["system"],"summary":"Health","description":"Повертає ознаку готовності навчального застосунку.","operationId":"health_health_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"additionalProperties":{"type":"string"},"type":"object","title":"Response Health Health Get"}}}}}}},"/api/v1/students":{"post":{"tags":["students"],"summary":"Create Student","description":"Створити студента із серверним UUID. Клієнт не задає id.","operationId":"create_student_api_v1_students_post","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StudentCreate"}}}},"responses":{"201":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/StudentRead"}}}},"409":{"description":"Електронна адреса вже існує"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"get":{"tags":["students"],"summary":"List Students","description":"Отримати список студентів, за потреби відфільтрований за роком.","operationId":"list_students_api_v1_students_get","parameters":[{"name":"enrollment_year","in":"query","required":false,"schema":{"anyOf":[{"type":"integer","maximum":2030,"minimum":2000},{"type":"null"}],"description":"Необов’язковий точний фільтр за роком вступу","title":"Enrollment Year"},"description":"Необов’язковий точний фільтр за роком вступу"}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/StudentRead"},"title":"Response List Students Api V1 Students Get"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/api/v1/students/{student_id}":{"get":{"tags":["students"],"summary":"Get Student","description":"Отримати одного студента за UUID.","operationId":"get_student_api_v1_students__student_id__get","parameters":[{"name":"student_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Student Id"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/StudentRead"}}}},"404":{"description":"Студента не знайдено"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"patch":{"tags":["students"],"summary":"Update Student","description":"Змінити лише передані поля; порожнє тіло, null, id та зайві поля — 422.","operationId":"update_student_api_v1_students__student_id__patch","parameters":[{"name":"student_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Student Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StudentUpdate"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/StudentRead"}}}},"404":{"description":"Студента не знайдено"},"409":{"description":"Електронна адреса вже існує"},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}}},"components":{"schemas":{"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"StudentCreate":{"properties":{"full_name":{"type":"string","maxLength":120,"minLength":5,"title":"Full Name"},"email":{"type":"string","format":"email","title":"Email"},"group_code":{"type":"string","pattern":"^[A-ZАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0-9]+-[0-9]{2}$","title":"Group Code"},"enrollment_year":{"type":"integer","maximum":2030.0,"minimum":2000.0,"title":"Enrollment Year","description":"Рік вступу; межі задає конфігурація закладу."}},"additionalProperties":false,"type":"object","required":["full_name","email","group_code","enrollment_year"],"title":"StudentCreate"},"StudentRead":{"properties":{"full_name":{"type":"string","maxLength":120,"minLength":5,"title":"Full Name"},"email":{"type":"string","format":"email","title":"Email"},"group_code":{"type":"string","pattern":"^[A-ZАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0-9]+-[0-9]{2}$","title":"Group Code"},"enrollment_year":{"type":"integer","maximum":2030.0,"minimum":2000.0,"title":"Enrollment Year","description":"Рік вступу; межі задає конфігурація закладу."},"id":{"type":"string","format":"uuid","title":"Id"}},"additionalProperties":false,"type":"object","required":["full_name","email","group_code","enrollment_year","id"],"title":"StudentRead"},"StudentUpdate":{"properties":{"full_name":{"type":"string","maxLength":120,"minLength":5,"title":"Full Name"},"email":{"type":"string","format":"email","title":"Email"},"group_code":{"type":"string","pattern":"^[A-ZАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0-9]+-[0-9]{2}$","title":"Group Code"},"enrollment_year":{"type":"integer","maximum":2030.0,"minimum":2000.0,"title":"Enrollment Year","description":"Рік вступу; межі задає конфігурація закладу."}},"additionalProperties":false,"type":"object","title":"StudentUpdate","description":"Поля можна пропускати, але явно переданий null не приймається."},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"},"input":{"title":"Input"},"ctx":{"type":"object","title":"Context"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Digital Dean API",
+    "description": "Навчальний API системи «Цифровий деканат»",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "description": "Повертає ознаку готовності навчального застосунку.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Create Student",
+        "description": "Створити студента із серверним UUID. Клієнт не задає id.",
+        "operationId": "create_student_api_v1_students_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRead"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Електронна адреса вже існує"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "List Students",
+        "description": "Отримати список студентів, за потреби відфільтрований за роком.",
+        "operationId": "list_students_api_v1_students_get",
+        "parameters": [
+          {
+            "name": "enrollment_year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2030,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Необов’язковий точний фільтр за роком вступу",
+              "title": "Enrollment Year"
+            },
+            "description": "Необов’язковий точний фільтр за роком вступу"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentRead"
+                  },
+                  "title": "Response List Students Api V1 Students Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{student_id}": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Get Student",
+        "description": "Отримати одного студента за UUID.",
+        "operationId": "get_student_api_v1_students__student_id__get",
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRead"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Студента не знайдено"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Update Student",
+        "description": "Змінити лише передані поля; порожнє тіло, null, id та зайві поля — 422.",
+        "operationId": "update_student_api_v1_students__student_id__patch",
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRead"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Студента не знайдено"
+          },
+          "409": {
+            "description": "Електронна адреса вже існує"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{student_id}/secure-notes": {
+      "post": {
+        "tags": [
+          "secure-notes"
+        ],
+        "summary": "Create Note",
+        "description": "Зберегти зашифровану примітку й повернути її метадані.",
+        "operationId": "create_note_api_v1_students__student_id__secure_notes_post",
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteMetadata"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Студента не знайдено"
+          },
+          "503": {
+            "description": "Protected note unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{student_id}/secure-notes/{note_id}": {
+      "get": {
+        "tags": [
+          "secure-notes"
+        ],
+        "summary": "Read Note",
+        "description": "Видати текст після перевірки конверта та асоційованих даних.",
+        "operationId": "read_note_api_v1_students__student_id__secure_notes__note_id__get",
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Student Id"
+            }
+          },
+          {
+            "name": "note_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Note Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteRead"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Студента або примітку не знайдено"
+          },
+          "500": {
+            "description": "Protected note unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lab/crypto/benchmark-results": {
+      "get": {
+        "tags": [
+          "crypto-lab"
+        ],
+        "summary": "Get Benchmark Results",
+        "description": "Повернути збережені результати повного базового експерименту.",
+        "operationId": "get_benchmark_results_api_v1_lab_crypto_benchmark_results_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Benchmark results unavailable"
+          },
+          "500": {
+            "description": "Benchmark results unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BenchmarkReport": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version"
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Run Id"
+          },
+          "measured_at_utc": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Measured At Utc"
+          },
+          "code_commit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$",
+            "title": "Code Commit"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/Environment"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/Parameters"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Result"
+            },
+            "type": "array",
+            "maxItems": 36,
+            "minItems": 36,
+            "title": "Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "run_id",
+          "measured_at_utc",
+          "code_commit",
+          "environment",
+          "parameters",
+          "results"
+        ],
+        "title": "BenchmarkReport"
+      },
+      "Environment": {
+        "properties": {
+          "cpu": {
+            "type": "string",
+            "title": "Cpu"
+          },
+          "os": {
+            "type": "string",
+            "title": "Os"
+          },
+          "architecture": {
+            "type": "string",
+            "title": "Architecture"
+          },
+          "python": {
+            "type": "string",
+            "title": "Python"
+          },
+          "cryptography": {
+            "type": "string",
+            "title": "Cryptography"
+          },
+          "pycryptodome": {
+            "type": "string",
+            "title": "Pycryptodome"
+          },
+          "openssl": {
+            "type": "string",
+            "title": "Openssl"
+          },
+          "aes_cpu_flag": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aes Cpu Flag"
+          },
+          "timer_resolution_ns": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Timer Resolution Ns"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cpu",
+          "os",
+          "architecture",
+          "python",
+          "cryptography",
+          "pycryptodome",
+          "openssl",
+          "aes_cpu_flag",
+          "timer_resolution_ns"
+        ],
+        "title": "Environment"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "NoteCreate": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "general",
+              "academic",
+              "administrative"
+            ],
+            "title": "Category",
+            "default": "general"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NoteCreate"
+      },
+      "NoteMetadata": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Student Id"
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "AES-128-GCM",
+              "AES-256-GCM",
+              "ChaCha20-Poly1305"
+            ],
+            "title": "Algorithm"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "general",
+              "academic",
+              "administrative"
+            ],
+            "title": "Category"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "student_id",
+          "algorithm",
+          "category"
+        ],
+        "title": "NoteMetadata"
+      },
+      "NoteRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Student Id"
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "AES-128-GCM",
+              "AES-256-GCM",
+              "ChaCha20-Poly1305"
+            ],
+            "title": "Algorithm"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "general",
+              "academic",
+              "administrative"
+            ],
+            "title": "Category"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "student_id",
+          "algorithm",
+          "category",
+          "text"
+        ],
+        "title": "NoteRead"
+      },
+      "Parameters": {
+        "properties": {
+          "sizes_bytes": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Sizes Bytes"
+          },
+          "warmup": {
+            "type": "integer",
+            "const": 10,
+            "title": "Warmup"
+          },
+          "series": {
+            "type": "integer",
+            "const": 5,
+            "title": "Series"
+          },
+          "operations_per_series": {
+            "type": "integer",
+            "const": 100,
+            "title": "Operations Per Series"
+          },
+          "aad_bytes": {
+            "type": "integer",
+            "const": 64,
+            "title": "Aad Bytes"
+          },
+          "includes_cipher_setup": {
+            "type": "boolean",
+            "const": true,
+            "title": "Includes Cipher Setup"
+          },
+          "shuffle_seed": {
+            "type": "integer",
+            "title": "Shuffle Seed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sizes_bytes",
+          "warmup",
+          "series",
+          "operations_per_series",
+          "aad_bytes",
+          "includes_cipher_setup",
+          "shuffle_seed"
+        ],
+        "title": "Parameters"
+      },
+      "Result": {
+        "properties": {
+          "backend": {
+            "type": "string",
+            "enum": [
+              "cryptography",
+              "pycryptodome"
+            ],
+            "title": "Backend"
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "AES-128-GCM",
+              "AES-256-GCM",
+              "ChaCha20-Poly1305"
+            ],
+            "title": "Algorithm"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "enum": [
+              1024,
+              65536,
+              1048576
+            ],
+            "title": "Size Bytes"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "encrypt",
+              "decrypt"
+            ],
+            "title": "Operation"
+          },
+          "series_mean_ns": {
+            "items": {
+              "type": "number",
+              "exclusiveMinimum": 0.0
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Series Mean Ns"
+          },
+          "median_ns": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Median Ns"
+          },
+          "iqr_ns": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Iqr Ns"
+          },
+          "throughput_mib_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Throughput Mib S"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backend",
+          "algorithm",
+          "size_bytes",
+          "operation",
+          "series_mean_ns",
+          "median_ns",
+          "iqr_ns",
+          "throughput_mib_s"
+        ],
+        "title": "Result"
+      },
+      "StudentCreate": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 5,
+            "title": "Full Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "group_code": {
+            "type": "string",
+            "pattern": "^[A-ZАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0-9]+-[0-9]{2}$",
+            "title": "Group Code"
+          },
+          "enrollment_year": {
+            "type": "integer",
+            "maximum": 2030.0,
+            "minimum": 2000.0,
+            "title": "Enrollment Year",
+            "description": "Рік вступу; межі задає конфігурація закладу."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "full_name",
+          "email",
+          "group_code",
+          "enrollment_year"
+        ],
+        "title": "StudentCreate"
+      },
+      "StudentRead": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 5,
+            "title": "Full Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "group_code": {
+            "type": "string",
+            "pattern": "^[A-ZАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0-9]+-[0-9]{2}$",
+            "title": "Group Code"
+          },
+          "enrollment_year": {
+            "type": "integer",
+            "maximum": 2030.0,
+            "minimum": 2000.0,
+            "title": "Enrollment Year",
+            "description": "Рік вступу; межі задає конфігурація закладу."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "full_name",
+          "email",
+          "group_code",
+          "enrollment_year",
+          "id"
+        ],
+        "title": "StudentRead"
+      },
+      "StudentUpdate": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 5,
+            "title": "Full Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "group_code": {
+            "type": "string",
+            "pattern": "^[A-ZАБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ0-9]+-[0-9]{2}$",
+            "title": "Group Code"
+          },
+          "enrollment_year": {
+            "type": "integer",
+            "maximum": 2030.0,
+            "minimum": 2000.0,
+            "title": "Enrollment Year",
+            "description": "Рік вступу; межі задає конфігурація закладу."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StudentUpdate",
+        "description": "Поля можна пропускати, але явно переданий null не приймається."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

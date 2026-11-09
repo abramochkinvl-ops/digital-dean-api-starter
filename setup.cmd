@@ -1,8 +1,12 @@
 @echo off
 cd /d "%~dp0"
-python -m venv .venv
+where py >nul 2>&1
+if errorlevel 1 (
+  python -m venv .venv
+) else (
+  py -m venv .venv
+)
 if errorlevel 1 exit /b 1
-call .venv\Scripts\activate.bat
-python -m pip install -e ".[dev]"
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
 if errorlevel 1 exit /b 1
-python -m pytest
+.venv\Scripts\python.exe -m pytest

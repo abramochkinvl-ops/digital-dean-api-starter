@@ -1,0 +1,86 @@
+newman
+
+Digital Dean — Practice 02
+
+→ 01 Health
+  GET http://127.0.0.1:8000/health [200 OK, 140B, 64ms]
+  ✓  status is 200
+  ✓  service is ready
+
+→ 02 Create synthetic student
+  POST http://127.0.0.1:8000/api/v1/students [201 Created, 330B, 32ms]
+  ✓  status is 201
+  ✓  response has id
+  ✓  enrollment year is retained
+
+→ 03 Create protected note
+  POST http://127.0.0.1:8000/api/v1/students/49237db1-e75f-4df4-9862-feaf1332086e/secure-notes [201 Created, 276B, 15ms]
+  ✓  note metadata without internal fields
+
+→ 04 Read verified note
+  GET http://127.0.0.1:8000/api/v1/students/49237db1-e75f-4df4-9862-feaf1332086e/secure-notes/e68f3144-51c3-4625-af7f-2b9f8897b908 [200 OK, 365B, 18ms]
+  ✓  verified text is preserved exactly
+
+→ 05 Reject blank note
+  POST http://127.0.0.1:8000/api/v1/students/49237db1-e75f-4df4-9862-feaf1332086e/secure-notes [422 Unprocessable Entity, 266B, 6ms]
+  ✓  blank note is rejected
+
+→ 06 Reject client key field
+  POST http://127.0.0.1:8000/api/v1/students/49237db1-e75f-4df4-9862-feaf1332086e/secure-notes [422 Unprocessable Entity, 268B, 8ms]
+  ✓  unknown input field is rejected
+
+→ 07 Reject unknown student
+  POST http://127.0.0.1:8000/api/v1/students/00000000-0000-4000-8000-000000000000/secure-notes [404 Not Found, 184B, 9ms]
+  ✓  unknown student is not found
+
+→ 08 Read local benchmark report
+  GET http://127.0.0.1:8000/api/v1/lab/crypto/benchmark-results [200 OK, 9.69kB, 9ms]
+  ✓  prepared benchmark report is available
+  ✓  report has object structure
+  ✓  baseline report contains 36 unique combinations
+
+→ 09 Create a second synthetic student
+  POST http://127.0.0.1:8000/api/v1/students [201 Created, 330B, 9ms]
+  ✓  status is 201
+  ✓  response has id
+  ✓  enrollment year is retained
+
+→ 10 Reject note through another existing student
+  GET http://127.0.0.1:8000/api/v1/students/a12e66bc-af2d-43e3-92a3-cfea438c0d31/secure-notes/e68f3144-51c3-4625-af7f-2b9f8897b908 [404 Not Found, 184B, 8ms]
+  ✓  another student cannot fetch the note
+
+→ 11 Reject unknown note category
+  POST http://127.0.0.1:8000/api/v1/students/49237db1-e75f-4df4-9862-feaf1332086e/secure-notes [422 Unprocessable Entity, 354B, 10ms]
+  ✓  unknown category is rejected
+
+→ 12 Read student by ID
+  GET http://127.0.0.1:8000/api/v1/students/49237db1-e75f-4df4-9862-feaf1332086e [200 OK, 325B, 9ms]
+  ✓  student remains readable
+
+→ 13 Patch student group
+  PATCH http://127.0.0.1:8000/api/v1/students/49237db1-e75f-4df4-9862-feaf1332086e [200 OK, 325B, 8ms]
+  ✓  student update preserves enrollment year
+
+→ 14 Filter students by enrollment year
+  GET http://127.0.0.1:8000/api/v1/students?enrollment_year=2026 [200 OK, 527B, 12ms]
+  ✓  enrollment filter still works
+
+┌─────────────────────────┬──────────────────┬──────────────────┐
+│                         │         executed │           failed │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│              iterations │                1 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│                requests │               14 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│            test-scripts │               14 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│      prerequest-scripts │                3 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│              assertions │               21 │                0 │
+├─────────────────────────┴──────────────────┴──────────────────┤
+│ total run duration: 954ms                                     │
+├───────────────────────────────────────────────────────────────┤
+│ total data received: 11.72kB (approx)                         │
+├───────────────────────────────────────────────────────────────┤
+│ average response time: 15ms [min: 6ms, max: 64ms, s.d.: 14ms] │
+└───────────────────────────────────────────────────────────────┘

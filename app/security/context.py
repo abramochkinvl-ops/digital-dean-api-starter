@@ -8,7 +8,7 @@ ENVELOPE_VERSION = 1
 
 
 def note_aad(
-    student_id: UUID, note_id: UUID, algorithm: str, key_id: UUID, category: str
+    student_id: UUID, note_id: UUID, algorithm: str, key_id: UUID, category: str = "general"
 ) -> bytes:
     """Серіалізувати контекст однаково під час запису й читання."""
     context = {

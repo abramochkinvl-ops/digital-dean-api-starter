@@ -67,8 +67,11 @@ def environment() -> dict:
     if platform.system() == "Windows":
         import winreg
 
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as key:
-            cpu = winreg.QueryValueEx(key, "ProcessorNameString")[0].strip()
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as key:
+                cpu = winreg.QueryValueEx(key, "ProcessorNameString")[0].strip()
+        except OSError:
+            pass
     cpuinfo = Path("/proc/cpuinfo")
     if cpuinfo.is_file():
         for line in cpuinfo.read_text(encoding="utf-8").splitlines():
